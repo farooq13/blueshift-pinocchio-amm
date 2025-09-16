@@ -90,6 +90,69 @@ impl Config {
 
     #[inline(always)]
     pub fn config_bump(&self) -> [u8; 1] { self.config_bump }
-    
 
+
+    // writing helpers
+    #[inline(always)]
+    pub fn load_mut(account_info: &AccountInfo) -> Result<Ref<Self>, ProgramError> {
+        if account_info.data_len() != Self::LEN {
+            return Err(ProgramError::InvalidAccountData)
+        }
+        if account_info.owner().ne(&crate::ID) {
+            return Err(ProgramError::InvalidAccountOwner);
+        }
+        Ok(RefMut::map(account_info.try_borrow_mut_data()?, |data| unsafe {
+           Self::from_bytes_unchecked_mut(data) 
+        }))
+    }
+
+    #[inline(always)]
+    pub fn set_state(&mut self, state: u8) -> Result<(), ProgramError> {
+        if state.ge(&(AmmState::WithdrawOnly as u8)) {
+            return Err(ProgramError::InvalidAccountData);
+        }
+        self.state = state as u8;
+        Ok(())
+    }
+
+    #[inline(always)]
+    pub fn set_fee(&mut self, fee: u16) -> Result<(), ProgramError> {
+        if fee.ge(&10_000) {
+            return Err(ProgramError::InvalidAccountData);
+        }
+        self.fee = fee.to_le_bytes();
+        Ok(())
+    }
+
+    #[inline(always)]
+    pub fn set_inner(
+        &mut self,
+        seed: u64,
+        authority: Pubkey,
+        mint_x: Pubkey,
+        mint_y: Pubkey,
+        fee: u16,
+        config_bump: [u8; 1],
+    ) -> Result<(), ProgramError> {
+        self.set_inner(AmmState::Initialized as u8)?;
+        self.set_seed(seed);
+        self.set_authority(authority);
+        self.set_mint_x(mint_x);
+        self.set_mint_y(mint_y);
+        self.set_fee(fee)?;
+        self.set_config_bump(config_bump);
+        Ok(())
+    }
+
+    #[inline(always)]
+    pub fn has_authority(&self) -> Option<Pubkey> {
+        let bytes = self.authority();
+        let chunks: &[u64; 4] = unsafe { &*(bytes.as_ptr() as *const [u64; 4]) };
+        if chunks.iter().any(|&x| x != 0) {
+            Some(self.authority)
+        } else {
+            None
+        }
+    }
 }
+
