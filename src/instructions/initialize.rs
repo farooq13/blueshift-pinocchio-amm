@@ -1,5 +1,5 @@
 use pinocchio::{account_info::AccountInfo, instruction::Account, program_error::ProgramError, pubkey::Pubkey};
-
+use std::mem::MaybeUninit;
 
 pub struct InitializeAccounts<'a> {
     pub initialize: &'a AccountInfo,
@@ -11,7 +11,14 @@ impl<'a> TryFrom<&'a [AccountInfo]> for InitializeAccounts<'a> {
     type Error = ProgramError;
 
     fn try_from(accounts: &'a [AccountInfo]) -> Result<Self, Self::Error> {
-
+        if accounts.len() < 3 {
+            return Err(ProgramError::NotEnoughAccountKeys);
+        }
+        Ok(InitializeAccounts {
+            initialize: &accounts[0],
+            mint_lp: &accounts[1],
+            config: &accounts[2],
+        })
     }
 }
 
@@ -35,6 +42,7 @@ impl TryFrom<&[u8]> for InitializeInstructionData {
         const INITIALIZE_DATA_LEN: usize =
             INITIALIZE_DATA_LEN_WITH_AUTHORITY - size_of::<[u8; 32]>();
 
+
         match data.len() {
             INITIALIZE_DATA_LEN_WITH_AUTHORITY => {
                 Ok(unsafe { (data.as_ptr() as *const Self).read_unaligned() })
@@ -54,5 +62,7 @@ impl TryFrom<&[u8]> for InitializeInstructionData {
             }
             _=> Err(ProgramError::InvalidAccountData),
         }
+
     }
+
 }

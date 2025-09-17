@@ -1,4 +1,5 @@
 use core::mem::size_of;
+use std::cell::{Ref, RefMut};
 use pinocchio::{account_info::AccountInfo, program_error::ProgramError, pubkey::Pubkey};
 
 
@@ -17,28 +18,28 @@ pub struct Config {
 
 #[repr(u8)]
 pub enum AmmState {
-    Uninitiailized: 0u8,
+    Uninitiailized = 0u8,
     Initialized = 1u8,
-    Disabled: 2u8,
-    WithdrawOnly: 3u8
+    Disabled = 2u8,
+    WithdrawOnly = 3u8,
 }
 
 impl Config {
     pub const LEN: usize = size_of::<Config>();
 
     #[inline(always)]
-    pub fn load(account_info: &AccountInfo) -> Result<Ref<Self>, ProgramError> {
-        if account_info.data.len() != Self::LEN {
+    pub fn load(account_info: &AccountInfo) -> Result<pinocchio::account_info::Ref<Self>, ProgramError> {
+        if account_info.data_len() != Self::LEN {
             return Err(ProgramError::InvalidAccountOwner);
         }
-        Ok(Ref::map(account_info.try_borrow_data()?, |data| unsafe {
+        Ok(pinocchio::account_info::Ref::map(account_info.try_borrow_data()?, |data| unsafe {
             Self::from_bytes_unchecked(data)
         }))
     }
 
     #[inline(always)]
     pub unsafe fn load_unchecked(account_info: &AccountInfo) -> Result<&Self, ProgramError> {
-        if account_info.data.len() != Self::LEN {
+        if account_info.data_len() != Self::LEN {
             return Err(ProgramError::InvalidAccountData);
         }
         Ok(Self::from_bytes_unchecked(
@@ -94,15 +95,15 @@ impl Config {
 
     // writing helpers
     #[inline(always)]
-    pub fn load_mut(account_info: &AccountInfo) -> Result<Ref<Self>, ProgramError> {
+    pub fn load_mut(account_info: &AccountInfo) -> Result<pinocchio::account_info::RefMut<Self>, ProgramError> {
         if account_info.data_len() != Self::LEN {
             return Err(ProgramError::InvalidAccountData)
         }
         if account_info.owner().ne(&crate::ID) {
             return Err(ProgramError::InvalidAccountOwner);
         }
-        Ok(RefMut::map(account_info.try_borrow_mut_data()?, |data| unsafe {
-           Self::from_bytes_unchecked_mut(data) 
+        Ok(pinocchio::account_info::RefMut::map(account_info.try_borrow_mut_data()?, |data| unsafe {
+           Self::from_bytes_unchecked_mut(data)
         }))
     }
 
@@ -134,7 +135,7 @@ impl Config {
         fee: u16,
         config_bump: [u8; 1],
     ) -> Result<(), ProgramError> {
-        self.set_inner(AmmState::Initialized as u8)?;
+        self.set_state(AmmState::Initialized as u8)?;
         self.set_seed(seed);
         self.set_authority(authority);
         self.set_mint_x(mint_x);
@@ -153,6 +154,31 @@ impl Config {
         } else {
             None
         }
+    }
+
+    #[inline(always)]
+    pub fn set_config_bump(&mut self, config_bump: [u8; 1]) {
+        self.config_bump = config_bump;
+    }
+
+    #[inline(always)]
+    pub fn set_seed(&mut self, seed: u64) {
+        self.seed = seed.to_le_bytes();
+    }
+
+    #[inline(always)]
+    pub fn set_mint_x(&mut self, mint_x: Pubkey) {
+        self.mint_x = mint_x;
+    }
+
+    #[inline(always)]
+    pub fn set_mint_y(&mut self, mint_y: Pubkey) {
+        self.mint_y = mint_y;
+    }
+
+    #[inline(always)]
+    pub fn set_authority(&mut self, authority: Pubkey) {
+        self.authority = authority;
     }
 }
 

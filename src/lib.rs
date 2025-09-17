@@ -6,7 +6,7 @@ use pinocchio::{
 entrypoint!(process_instruction);
 
 pub mod instructions;
-pub use instructions::*;
+pub use instructions::{Initialize, Deposit, Withdraw, Swap};
 
 pub mod state;
 pub use  state::*;
