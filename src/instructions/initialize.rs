@@ -66,3 +66,33 @@ impl TryFrom<&[u8]> for InitializeInstructionData {
     }
 
 }
+
+
+pub struct Initialize<'a> {
+    pub accounts: InitializeAccounts<'a>,
+    pub instruction_data: InitializeInstructionData,
+}
+ 
+impl<'a> TryFrom<(&'a [u8], &'a [AccountInfo])> for Initialize<'a> {
+    type Error = ProgramError;
+ 
+    fn try_from((data, accounts): (&'a [u8], &'a [AccountInfo])) -> Result<Self, Self::Error> {
+        let accounts = InitializeAccounts::try_from(accounts)?;
+        let instruction_data: InitializeInstructionData = InitializeInstructionData::try_from(data)?;
+ 
+        Ok(Self {
+            accounts,
+            instruction_data,
+        })
+    }
+}
+ 
+impl<'a> Initialize<'a> {
+    pub const DISCRIMINATOR: &'a u8 = &0;
+ 
+    pub fn process(&mut self) -> ProgramResult {
+      //..
+ 
+      Ok(())
+    }
+}
